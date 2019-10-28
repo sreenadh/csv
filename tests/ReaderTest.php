@@ -1,12 +1,9 @@
 <?php
 
 /**
- * League.Csv (https://csv.thephpleague.com).
+ * League.Csv (https://csv.thephpleague.com)
  *
- * @author  Ignace Nyamagana Butera <nyamsprod@gmail.com>
- * @license https://github.com/thephpleague/csv/blob/master/LICENSE (MIT License)
- * @version 9.2.0
- * @link    https://github.com/thephpleague/csv
+ * (c) Ignace Nyamagana Butera <nyamsprod@gmail.com>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -34,7 +31,7 @@ use function unlink;
 
 /**
  * @group reader
- * @coversDefaultClass League\Csv\Reader
+ * @coversDefaultClass \League\Csv\Reader
  */
 class ReaderTest extends TestCase
 {
@@ -151,12 +148,14 @@ EOF;
      * @covers ::getHeaderOffset
      * @covers ::getHeader
      * @covers ::setHeader
+     * @covers ::seekRow
      */
     public function testGetHeader()
     {
         $this->csv->setHeaderOffset(1);
         self::assertSame(1, $this->csv->getHeaderOffset());
         self::assertSame($this->expected[1], $this->csv->getHeader());
+
         $this->csv->setHeaderOffset(null);
         self::assertNull($this->csv->getHeaderOffset());
         self::assertSame([], $this->csv->getHeader());
@@ -329,6 +328,22 @@ EOF;
         }
     }
 
+    public function testDisablingBOMStripping()
+    {
+        $expected_record = [Reader::BOM_UTF16_LE.'john', 'doe', 'john.doe@example.com'];
+        $fp = fopen('php://temp', 'r+');
+        fputcsv($fp, $expected_record);
+        $csv = Reader::createFromStream($fp);
+        $csv->includeInputBOM();
+        self::assertSame(Reader::BOM_UTF16_LE, $csv->getInputBOM());
+        foreach ($csv as $offset => $record) {
+            self::assertSame($expected_record, $record);
+        }
+        $csv = null;
+        fclose($fp);
+        $fp = null;
+    }
+
     /**
      * @covers ::getIterator
      * @dataProvider appliedFlagsProvider
@@ -457,5 +472,112 @@ EOF;
     {
         $csv = Reader::createFromPath(__DIR__.'/data/foo_readonly.csv');
         self::assertCount(1, $csv);
+    }
+
+    /**
+     * @dataProvider sourceProvider
+     * @covers ::includeEmptyRecords
+     * @covers ::skipEmptyRecords
+     * @covers ::isEmptyRecordsIncluded
+     * @covers ::getRecords
+     */
+    public function testSkippingEmptyRecords(
+        Reader $reader,
+        array $expected_with_skipping,
+        array $expected_with_preserving,
+        array $expected_with_skipping_with_header,
+        array $expected_with_preserving_with_header
+    ) {
+        self::assertFalse($reader->isEmptyRecordsIncluded());
+        self::assertSame(count($expected_with_skipping), count($reader));
+        foreach ($reader as $offset => $record) {
+            self::assertSame($expected_with_skipping[$offset], $record);
+        }
+
+        $reader->includeEmptyRecords();
+        self::assertTrue($reader->isEmptyRecordsIncluded());
+        self::assertSame(count($expected_with_preserving), count($reader));
+        foreach ($reader as $offset => $record) {
+            self::assertSame($expected_with_preserving[$offset], $record);
+        }
+
+        $reader->setHeaderOffset(0);
+        self::assertTrue($reader->isEmptyRecordsIncluded());
+        self::assertSame(count($expected_with_preserving_with_header), count($reader));
+        foreach ($reader as $offset => $record) {
+            self::assertSame($expected_with_preserving_with_header[$offset], $record);
+        }
+
+        $reader->skipEmptyRecords();
+        self::assertFalse($reader->isEmptyRecordsIncluded());
+        self::assertSame(count($expected_with_skipping_with_header), count($reader));
+        foreach ($reader as $offset => $record) {
+            self::assertSame($expected_with_skipping_with_header[$offset], $record);
+        }
+    }
+
+    public function sourceProvider(): array
+    {
+        $source = <<<EOF
+"parent name","child name","title"
+
+
+"parentA","childA","titleA"
+EOF;
+        $expected_with_preserving = [
+            0 => ['parent name', 'child name', 'title'],
+            1 => [],
+            2 => [],
+            3 => ['parentA', 'childA', 'titleA'],
+        ];
+
+        $expected_with_preserving_with_header = [
+            1 => ['parent name' => null, 'child name' => null, 'title' => null],
+            2 => ['parent name' => null, 'child name' => null, 'title' => null],
+            3 => ['parent name' => 'parentA', 'child name' => 'childA', 'title' => 'titleA'],
+        ];
+
+        $expected_with_skipping = [
+            0 => ['parent name', 'child name', 'title'],
+            3 => ['parentA', 'childA', 'titleA'],
+        ];
+
+        $expected_with_skipping_with_header = [
+            3 => ['parent name' => 'parentA', 'child name' => 'childA', 'title' => 'titleA'],
+        ];
+
+        $rsrc = new SplTempFileObject();
+        $rsrc->fwrite($source);
+
+        return [
+            'FileObject' => [
+                Reader::createFromFileObject($rsrc),
+                $expected_with_skipping,
+                $expected_with_preserving,
+                $expected_with_skipping_with_header,
+                $expected_with_preserving_with_header,
+            ],
+            'Stream' => [
+                Reader::createFromString($source),
+                $expected_with_skipping,
+                $expected_with_preserving,
+                $expected_with_skipping_with_header,
+                $expected_with_preserving_with_header,
+            ],
+            'FileObject with empty escape char' =>  [
+                Reader::createFromFileObject($rsrc)->setEscape(''),
+                $expected_with_skipping,
+                $expected_with_preserving,
+                $expected_with_skipping_with_header,
+                $expected_with_preserving_with_header,
+            ],
+            'Stream with empty escape char' => [
+                Reader::createFromString($source)->setEscape(''),
+                $expected_with_skipping,
+                $expected_with_preserving,
+                $expected_with_skipping_with_header,
+                $expected_with_preserving_with_header,
+            ],
+        ];
     }
 }

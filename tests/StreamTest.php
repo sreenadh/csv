@@ -1,12 +1,9 @@
 <?php
 
 /**
- * League.Csv (https://csv.thephpleague.com).
+ * League.Csv (https://csv.thephpleague.com)
  *
- * @author  Ignace Nyamagana Butera <nyamsprod@gmail.com>
- * @license https://github.com/thephpleague/csv/blob/master/LICENSE (MIT License)
- * @version 9.2.0
- * @link    https://github.com/thephpleague/csv
+ * (c) Ignace Nyamagana Butera <nyamsprod@gmail.com>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -19,17 +16,18 @@ use League\Csv\Stream;
 use PHPUnit\Framework\TestCase;
 use SplFileObject;
 use TypeError;
-use const STREAM_FILTER_READ;
 use function curl_init;
 use function fopen;
 use function fputcsv;
 use function stream_context_create;
 use function stream_wrapper_register;
 use function stream_wrapper_unregister;
+use const PHP_VERSION_ID;
+use const STREAM_FILTER_READ;
 
 /**
  * @group csv
- * @coversDefaultClass League\Csv\Stream
+ * @coversDefaultClass \League\Csv\Stream
  */
 class StreamTest extends TestCase
 {
@@ -166,6 +164,17 @@ class StreamTest extends TestCase
     }
 
     /**
+     * @covers ::seek
+     * @covers ::key
+     */
+    public function testSeekToPositionZero()
+    {
+        $doc = Stream::createFromString();
+        $doc->seek(0);
+        self::assertSame(0, $doc->key());
+    }
+
+    /**
      * @covers ::rewind
      */
     public function testRewindThrowsException()
@@ -199,6 +208,27 @@ class StreamTest extends TestCase
         self::assertSame($expected, $doc->getCsvControl());
         self::expectException(Exception::class);
         $doc->setCsvControl(...['foo']);
+    }
+
+    public function testCsvControlThrowsOnEmptyEscapeString()
+    {
+        if (70400 <= PHP_VERSION_ID) {
+            $this->markTestSkipped('This test is only for PHP7.4- versions');
+        }
+        self::expectException(Exception::class);
+        $doc = Stream::createFromString();
+        $doc->setCsvControl(...[';', '|', '']);
+    }
+
+    public function testCsvControlAcceptsEmptyEscapeString()
+    {
+        if (70400 > PHP_VERSION_ID) {
+            $this->markTestSkipped('This test is only for PHP7.4+ versions');
+        }
+        $doc = Stream::createFromString();
+        $expected = [';', '|', ''];
+        $doc->setCsvControl(...$expected);
+        self::assertSame($expected, $doc->getCsvControl());
     }
 
     /**

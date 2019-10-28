@@ -1,12 +1,9 @@
 <?php
 
 /**
- * League.Csv (https://csv.thephpleague.com).
+ * League.Csv (https://csv.thephpleague.com)
  *
- * @author  Ignace Nyamagana Butera <nyamsprod@gmail.com>
- * @license https://github.com/thephpleague/csv/blob/master/LICENSE (MIT License)
- * @version 9.2.0
- * @link    https://github.com/thephpleague/csv
+ * (c) Ignace Nyamagana Butera <nyamsprod@gmail.com>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -20,13 +17,13 @@ use League\Csv\RFC4180Field;
 use League\Csv\Writer;
 use PHPUnit\Framework\TestCase;
 use TypeError;
+use function stream_get_filters;
 use const STREAM_FILTER_ALL;
 use const STREAM_FILTER_READ;
-use function stream_get_filters;
 
 /**
  * @group filter
- * @coversDefaultClass League\Csv\RFC4180Field
+ * @coversDefaultClass \League\Csv\RFC4180Field
  */
 class RFC4180FieldTest extends TestCase
 {
@@ -42,10 +39,8 @@ class RFC4180FieldTest extends TestCase
      * @covers ::filter
      *
      * @dataProvider bugsProvider
-     *
-     * @param string $expected
      */
-    public function testStreamFilterOnWrite($expected, array $record)
+    public function testStreamFilterOnWrite(string $expected, array $record)
     {
         $csv = Writer::createFromPath('php://temp');
         RFC4180Field::addTo($csv);
@@ -80,10 +75,8 @@ class RFC4180FieldTest extends TestCase
      * @covers ::filter
      *
      * @dataProvider readerBugsProvider
-     *
-     * @param string $expected
      */
-    public function testStreamFilterOnRead($expected, array $record)
+    public function testStreamFilterOnRead(string $expected, array $record)
     {
         $csv = Reader::createFromString($expected);
         RFC4180Field::addTo($csv);

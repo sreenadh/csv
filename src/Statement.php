@@ -1,12 +1,9 @@
 <?php
 
 /**
- * League.Csv (https://csv.thephpleague.com).
+ * League.Csv (https://csv.thephpleague.com)
  *
- * @author  Ignace Nyamagana Butera <nyamsprod@gmail.com>
- * @license https://github.com/thephpleague/csv/blob/master/LICENSE (MIT License)
- * @version 9.2.0
- * @link    https://github.com/thephpleague/csv
+ * (c) Ignace Nyamagana Butera <nyamsprod@gmail.com>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -107,7 +104,7 @@ class Statement
     public function limit(int $limit): self
     {
         if (-1 > $limit) {
-            throw new Exception(sprintf('%s() expects the limit to be greater or equel to -1, %s given', __METHOD__, $limit));
+            throw new Exception(sprintf('%s() expects the limit to be greater or equal to -1, %s given', __METHOD__, $limit));
         }
 
         if ($limit === $this->limit) {

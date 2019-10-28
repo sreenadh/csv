@@ -1,12 +1,9 @@
 <?php
 
 /**
- * League.Csv (https://csv.thephpleague.com).
+ * League.Csv (https://csv.thephpleague.com)
  *
- * @author  Ignace Nyamagana Butera <nyamsprod@gmail.com>
- * @license https://github.com/thephpleague/csv/blob/master/LICENSE (MIT License)
- * @version 9.2.0
- * @link    https://github.com/thephpleague/csv
+ * (c) Ignace Nyamagana Butera <nyamsprod@gmail.com>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -18,8 +15,6 @@ namespace League\Csv;
 
 use Traversable;
 use TypeError;
-use const SEEK_CUR;
-use const STREAM_FILTER_WRITE;
 use function array_reduce;
 use function gettype;
 use function implode;
@@ -29,6 +24,9 @@ use function preg_quote;
 use function sprintf;
 use function str_replace;
 use function strlen;
+use const PHP_VERSION_ID;
+use const SEEK_CUR;
+use const STREAM_FILTER_WRITE;
 
 /**
  * A class to insert records into a CSV Document.
@@ -153,7 +151,7 @@ class Writer extends AbstractCsv
     public function insertOne(array $record): int
     {
         $method = 'addRecord';
-        if ('' === $this->escape) {
+        if (70400 > PHP_VERSION_ID && '' === $this->escape) {
             $method = 'addRFC4180CompliantRecord';
         }
 
@@ -172,7 +170,7 @@ class Writer extends AbstractCsv
      *
      * @see https://php.net/manual/en/function.fputcsv.php
      *
-     * @return int|bool
+     * @return int|false
      */
     protected function addRecord(array $record)
     {
@@ -206,13 +204,13 @@ class Writer extends AbstractCsv
      *
      * The LF character is added at the end of each record to mimic fputcsv behavior
      *
-     * @return int|bool
+     * @return int|false
      */
     protected function addRFC4180CompliantRecord(array $record)
     {
         foreach ($record as &$field) {
             $field = (string) $field;
-            if (preg_match($this->rfc4180_regexp, $field)) {
+            if (1 === preg_match($this->rfc4180_regexp, $field)) {
                 $field = $this->enclosure.str_replace($this->enclosure, $this->rfc4180_enclosure, $field).$this->enclosure;
             }
         }

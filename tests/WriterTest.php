@@ -1,12 +1,9 @@
 <?php
 
 /**
- * League.Csv (https://csv.thephpleague.com).
+ * League.Csv (https://csv.thephpleague.com)
  *
- * @author  Ignace Nyamagana Butera <nyamsprod@gmail.com>
- * @license https://github.com/thephpleague/csv/blob/master/LICENSE (MIT License)
- * @version 9.2.0
- * @link    https://github.com/thephpleague/csv
+ * (c) Ignace Nyamagana Butera <nyamsprod@gmail.com>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -31,7 +28,7 @@ use function tmpfile;
 
 /**
  * @group writer
- * @coversDefaultClass League\Csv\Writer
+ * @coversDefaultClass \League\Csv\Writer
  */
 class WriterTest extends TestCase
 {
@@ -135,7 +132,7 @@ class WriterTest extends TestCase
         Writer::createFromPath(__DIR__.'/data/foo.csv', 'r')->insertOne($record);
     }
 
-    public function inputDataProvider()
+    public function inputDataProvider(): array
     {
         return [
             'normal record' => [['foo', 'bar']],
@@ -203,7 +200,7 @@ class WriterTest extends TestCase
      * @covers ::getNewline
      * @covers ::insertOne
      * @covers ::consolidate
-     * @covers League\Csv\Stream
+     * @covers \League\Csv\Stream
      */
     public function testCustomNewline()
     {
@@ -238,7 +235,7 @@ class WriterTest extends TestCase
     }
 
     /**
-     * @covers League\Csv\Stream::fseek
+     * @covers \League\Csv\Stream::fseek
      */
     public function testWriterTriggerExceptionWithNonSeekableStream()
     {
@@ -256,6 +253,7 @@ class WriterTest extends TestCase
      * @covers ::getInputBOM
      * @covers ::insertOne
      * @covers ::addRFC4180CompliantRecord
+     * @covers ::addRecord
      *
      * @dataProvider compliantRFC4180Provider
      */

@@ -1,12 +1,9 @@
 <?php
 
 /**
- * League.Csv (https://csv.thephpleague.com).
+ * League.Csv (https://csv.thephpleague.com)
  *
- * @author  Ignace Nyamagana Butera <nyamsprod@gmail.com>
- * @license https://github.com/thephpleague/csv/blob/master/LICENSE (MIT License)
- * @version 9.2.0
- * @link    https://github.com/thephpleague/csv
+ * (c) Ignace Nyamagana Butera <nyamsprod@gmail.com>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -141,17 +138,18 @@ class CharsetConverter extends php_user_filter
         }
 
         $encodings = substr($this->filtername, strlen($prefix));
-        if (!preg_match(',^(?<input>[-\w]+)\/(?<output>[-\w]+)$,', $encodings, $matches)) {
+        if (1 !== preg_match(',^(?<input>[-\w]+)\/(?<output>[-\w]+)$,', $encodings, $matches)) {
             return false;
         }
 
         try {
             $this->input_encoding = $this->filterEncoding($matches['input']);
             $this->output_encoding = $this->filterEncoding($matches['output']);
-            return true;
         } catch (OutOfRangeException $e) {
             return false;
         }
+
+        return true;
     }
 
     /**

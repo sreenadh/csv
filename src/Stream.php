@@ -1,12 +1,9 @@
 <?php
 
 /**
- * League.Csv (https://csv.thephpleague.com).
+ * League.Csv (https://csv.thephpleague.com)
  *
- * @author  Ignace Nyamagana Butera <nyamsprod@gmail.com>
- * @license https://github.com/thephpleague/csv/blob/master/LICENSE (MIT License)
- * @version 9.2.0
- * @link    https://github.com/thephpleague/csv
+ * (c) Ignace Nyamagana Butera <nyamsprod@gmail.com>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -19,9 +16,7 @@ namespace League\Csv;
 use SeekableIterator;
 use SplFileObject;
 use TypeError;
-use const SEEK_SET;
 use function array_keys;
-use function array_values;
 use function array_walk_recursive;
 use function fclose;
 use function feof;
@@ -43,6 +38,8 @@ use function stream_filter_append;
 use function stream_filter_remove;
 use function stream_get_meta_data;
 use function strlen;
+use const PHP_VERSION_ID;
+use const SEEK_SET;
 
 /**
  * An object oriented API to handle a PHP stream resource.
@@ -124,20 +121,20 @@ class Stream implements SeekableIterator
     /**
      * New instance.
      *
-     * @param resource $resource stream type resource
+     * @param resource $stream stream type resource
      */
-    public function __construct($resource)
+    public function __construct($stream)
     {
-        if (!is_resource($resource)) {
-            throw new TypeError(sprintf('Argument passed must be a stream resource, %s given', gettype($resource)));
+        if (!is_resource($stream)) {
+            throw new TypeError(sprintf('Argument passed must be a stream resource, %s given', gettype($stream)));
         }
 
-        if ('stream' !== ($type = get_resource_type($resource))) {
+        if ('stream' !== ($type = get_resource_type($stream))) {
             throw new TypeError(sprintf('Argument passed must be a stream resource, %s resource given', $type));
         }
 
-        $this->is_seekable = stream_get_meta_data($resource)['seekable'];
-        $this->stream = $resource;
+        $this->is_seekable = stream_get_meta_data($stream)['seekable'];
+        $this->stream = $stream;
     }
 
     /**
@@ -211,7 +208,7 @@ class Stream implements SeekableIterator
      *
      * @return static
      */
-    public static function createFromString(string $content)
+    public static function createFromString(string $content = '')
     {
         $resource = fopen('php://temp', 'r+');
         fwrite($resource, $content);
@@ -220,6 +217,14 @@ class Stream implements SeekableIterator
         $instance->should_close_stream = true;
 
         return $instance;
+    }
+
+    /**
+     * Return the URI of the underlying stream.
+     */
+    public function getPathname(): string
+    {
+        return stream_get_meta_data($this->stream)['uri'];
     }
 
     /**
@@ -258,14 +263,19 @@ class Stream implements SeekableIterator
      */
     protected function filterControl(string $delimiter, string $enclosure, string $escape, string $caller): array
     {
-        $controls = ['delimiter' => $delimiter, 'enclosure' => $enclosure, 'escape' => $escape];
-        foreach ($controls as $type => $control) {
-            if (1 !== strlen($control)) {
-                throw new Exception(sprintf('%s() expects %s to be a single character', $caller, $type));
-            }
+        if (1 !== strlen($delimiter)) {
+            throw new Exception(sprintf('%s() expects delimiter to be a single character', $caller));
         }
 
-        return array_values($controls);
+        if (1 !== strlen($enclosure)) {
+            throw new Exception(sprintf('%s() expects enclosure to be a single character', $caller));
+        }
+
+        if (1 === strlen($escape) || ('' === $escape && 70400 <= PHP_VERSION_ID)) {
+            return [$delimiter, $enclosure, $escape];
+        }
+
+        throw new Exception(sprintf('%s() expects escape to be a single character', $caller));
     }
 
     /**
@@ -295,7 +305,7 @@ class Stream implements SeekableIterator
      *
      * @see http://php.net/manual/en/splfileobject.fputcsv.php
      *
-     * @return int|bool
+     * @return int|false
      */
     public function fputcsv(array $fields, string $delimiter = ',', string $enclosure = '"', string $escape = '\\')
     {
@@ -383,7 +393,7 @@ class Stream implements SeekableIterator
     /**
      * Retrieves the current line as a CSV Record.
      *
-     * @return array|bool
+     * @return array|false
      */
     protected function getCurrentRecord()
     {
@@ -414,7 +424,10 @@ class Stream implements SeekableIterator
             $this->next();
         }
 
-        $this->offset--;
+        if (0 !== $position) {
+            $this->offset--;
+        }
+
         $this->current();
     }
 
@@ -479,7 +492,7 @@ class Stream implements SeekableIterator
      *
      * @see http://php.net/manual/en/splfileobject.fwrite.php
      *
-     * @return int|bool
+     * @return int|false
      */
     public function fwrite(string $str, int $length = null)
     {

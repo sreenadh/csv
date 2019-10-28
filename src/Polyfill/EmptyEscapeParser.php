@@ -1,12 +1,9 @@
 <?php
 
 /**
- * League.Csv (https://csv.thephpleague.com).
+ * League.Csv (https://csv.thephpleague.com)
  *
- * @author  Ignace Nyamagana Butera <nyamsprod@gmail.com>
- * @license https://github.com/thephpleague/csv/blob/master/LICENSE (MIT License)
- * @version 9.2.0
- * @link    https://github.com/thephpleague/csv
+ * (c) Ignace Nyamagana Butera <nyamsprod@gmail.com>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -70,14 +67,21 @@ final class EmptyEscapeParser
     private static $trim_mask;
 
     /**
-     * @var string|bool
+     * @var string|false
      */
     private static $line;
 
     /**
+     * @codeCoverageIgnore
+     */
+    private function __construct()
+    {
+    }
+
+    /**
      * Converts the document into a CSV record iterator.
      *
-     * In PH7.4+ you'll be able to do
+     * In PHP7.4+ you'll be able to do
      *
      * <code>
      * $file = new SplFileObject('/path/to/file.csv', 'r');
@@ -113,7 +117,7 @@ final class EmptyEscapeParser
         self::$document->rewind();
         while (self::$document->valid()) {
             $record = self::extractRecord();
-            if (!in_array(null, $record, true)) {
+            if ([null] === $record || !in_array(null, $record, true)) {
                 yield $record;
             }
         }
@@ -149,7 +153,10 @@ final class EmptyEscapeParser
         self::$line = self::$document->fgets();
         do {
             $method = 'extractFieldContent';
-            $buffer = ltrim(self::$line, self::$trim_mask);
+            $buffer = '';
+            if (false !== self::$line) {
+                $buffer = ltrim(self::$line, self::$trim_mask);
+            }
             if (($buffer[0] ?? '') === self::$enclosure) {
                 $method = 'extractEnclosedFieldContent';
                 self::$line = $buffer;

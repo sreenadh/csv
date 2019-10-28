@@ -1,12 +1,9 @@
 <?php
 
 /**
- * League.Csv (https://csv.thephpleague.com).
+ * League.Csv (https://csv.thephpleague.com)
  *
- * @author  Ignace Nyamagana Butera <nyamsprod@gmail.com>
- * @license https://github.com/thephpleague/csv/blob/master/LICENSE (MIT License)
- * @version 9.2.0
- * @link    https://github.com/thephpleague/csv
+ * (c) Ignace Nyamagana Butera <nyamsprod@gmail.com>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -18,21 +15,24 @@ use League\Csv\Exception;
 use League\Csv\Reader;
 use League\Csv\Writer;
 use PHPUnit\Framework\TestCase;
+use SplFileObject;
 use SplTempFileObject;
-use const PHP_EOL;
-use const STREAM_FILTER_READ;
-use const STREAM_FILTER_WRITE;
 use function chr;
 use function function_exists;
 use function iterator_to_array;
 use function League\Csv\is_iterable as CSVIsiterable;
+use function ob_get_clean;
+use function ob_start;
 use function strtolower;
 use function tmpfile;
 use function unlink;
+use const PHP_EOL;
+use const STREAM_FILTER_READ;
+use const STREAM_FILTER_WRITE;
 
 /**
  * @group csv
- * @coversDefaultClass League\Csv\AbstractCsv
+ * @coversDefaultClass \League\Csv\AbstractCsv
  */
 class CsvTest extends TestCase
 {
@@ -141,6 +141,7 @@ EOF;
     /**
      * @covers ::output
      * @covers ::sendHeaders
+     * @covers \League\Csv\Stream
      */
     public function testInvalidOutputFile()
     {
@@ -153,7 +154,7 @@ EOF;
      * @covers ::output
      * @covers ::sendHeaders
      * @covers ::createFromString
-     * @covers League\Csv\Stream
+     * @covers \League\Csv\Stream
      */
     public function testOutputHeaders()
     {
@@ -172,6 +173,18 @@ EOF;
         self::assertSame('Content-Transfer-Encoding: binary', $headers[1]);
         self::assertSame('Content-Description: File Transfer', $headers[2]);
         self::assertContains('Content-Disposition: attachment; filename="tst.csv"; filename*=utf-8\'\'t%C3%A9st.csv', $headers[3]);
+    }
+
+    /**
+     * @covers ::chunk
+     * @covers ::getContent
+     */
+    public function testChunkDoesNotTimeoutAfterReading()
+    {
+        $raw_csv = "john,doe,john.doe@example.com\njane,doe,jane.doe@example.com\n";
+        $csv = Reader::createFromString($raw_csv);
+        iterator_to_array($csv->getRecords());
+        self::assertSame($raw_csv, $csv->getContent());
     }
 
     /**
@@ -400,5 +413,89 @@ EOF;
         self::assertFalse(CSVIsiterable(1));
         self::assertFalse(CSVIsiterable((object) ['foo']));
         self::assertFalse(CSVIsiterable(Writer::createFromString('')));
+    }
+
+    /**
+     * @covers ::getPathname
+     * @covers League\Csv\Stream::getPathname
+     * @dataProvider getPathnameProvider
+     */
+    public function testGetPathname($path, string $expected)
+    {
+        self::assertSame($expected, Reader::createFromPath($path)->getPathname());
+        self::assertSame($expected, Reader::createFromFileObject(new SplFileObject($path))->getPathname());
+        self::assertSame($expected, Writer::createFromFileObject(new SplFileObject($path))->getPathname());
+        self::assertSame($expected, Writer::createFromFileObject(new SplFileObject($path))->getPathname());
+    }
+
+    public function getPathnameProvider()
+    {
+        return [
+            'absolute path' => [
+                'path' => __DIR__.'/data/foo.csv',
+                'expected' => __DIR__.'/data/foo.csv',
+            ],
+            'relative path' => [
+                'path' => 'tests/data/foo.csv',
+                'expected' => 'tests/data/foo.csv',
+            ],
+            'external uri' => [
+                'path' => 'https://raw.githubusercontent.com/thephpleague/csv/8.2.3/test/data/foo.csv',
+                'expected' => 'https://raw.githubusercontent.com/thephpleague/csv/8.2.3/test/data/foo.csv',
+            ],
+        ];
+    }
+
+    /**
+     * @covers ::getPathname
+     * @covers League\Csv\Stream::getPathname
+     */
+    public function testGetPathnameWithTempFile()
+    {
+        self::assertSame('php://temp', Reader::createFromString('')->getPathname());
+        self::assertSame('php://temp', Reader::createFromString(new SplTempFileObject())->getPathname());
+        self::assertSame('php://temp', Reader::createFromFileObject(new SplTempFileObject())->getPathname());
+        self::assertSame('php://temp', Writer::createFromString('')->getPathname());
+        self::assertSame('php://temp', Writer::createFromString(new SplTempFileObject())->getPathname());
+        self::assertSame('php://temp', Writer::createFromFileObject(new SplTempFileObject())->getPathname());
+    }
+
+    /**
+     * @covers ::isInputBOMIncluded
+     * @covers ::includeInputBOM
+     * @covers ::skipInputBOM
+     */
+    public function testBOMStripping()
+    {
+        $reader = Reader::createFromString();
+        self::assertFalse($reader->isInputBOMIncluded());
+        $reader->includeInputBOM();
+        self::assertTrue($reader->isInputBOMIncluded());
+        $reader->skipInputBOM();
+        self::assertFalse($reader->isInputBOMIncluded());
+    }
+
+    /**
+     * @runInSeparateProcess
+     * @covers ::output
+     */
+    public function testOutputDoesNotStripBOM()
+    {
+        $raw_csv = Reader::BOM_UTF8."john,doe,john.doe@example.com\njane,doe,jane.doe@example.com\n";
+        $csv = Reader::createFromString($raw_csv);
+        $csv->setOutputBOM(Reader::BOM_UTF16_BE);
+        ob_start();
+        $csv->output();
+        $result = ob_get_clean();
+        self::assertNotContains(Reader::BOM_UTF8, $result);
+        self::assertContains(Reader::BOM_UTF16_BE, $result);
+
+        $csv->includeInputBOM();
+        ob_start();
+        $csv->output();
+        $result = ob_get_clean();
+        self::assertContains(Reader::BOM_UTF16_BE, $result);
+        self::assertContains(Reader::BOM_UTF8, $result);
+        self::assertTrue(0 === strpos($result, Reader::BOM_UTF16_BE.Reader::BOM_UTF8));
     }
 }

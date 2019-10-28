@@ -1,12 +1,9 @@
 <?php
 
 /**
- * League.Csv (https://csv.thephpleague.com).
+ * League.Csv (https://csv.thephpleague.com)
  *
- * @author  Ignace Nyamagana Butera <nyamsprod@gmail.com>
- * @license https://github.com/thephpleague/csv/blob/master/LICENSE (MIT License)
- * @version 9.2.0
- * @link    https://github.com/thephpleague/csv
+ * (c) Ignace Nyamagana Butera <nyamsprod@gmail.com>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -18,9 +15,6 @@ namespace League\Csv;
 
 use Generator;
 use SplFileObject;
-use const FILTER_FLAG_STRIP_HIGH;
-use const FILTER_FLAG_STRIP_LOW;
-use const FILTER_SANITIZE_STRING;
 use function filter_var;
 use function mb_strlen;
 use function rawurlencode;
@@ -29,6 +23,9 @@ use function str_replace;
 use function str_split;
 use function strcspn;
 use function strlen;
+use const FILTER_FLAG_STRIP_HIGH;
+use const FILTER_FLAG_STRIP_LOW;
+use const FILTER_SANITIZE_STRING;
 
 /**
  * An abstract class to enable CSV document loading.
@@ -90,6 +87,13 @@ abstract class AbstractCsv implements ByteSequence
      * @var SplFileObject|Stream
      */
     protected $document;
+
+    /**
+     * Tells whether the Input BOM must be included or skipped.
+     *
+     * @var bool
+     */
+    protected $is_input_bom_included = false;
 
     /**
      * New instance.
@@ -187,6 +191,14 @@ abstract class AbstractCsv implements ByteSequence
     }
 
     /**
+     * Returns the pathname of the underlying document.
+     */
+    public function getPathname(): string
+    {
+        return $this->document->getPathname();
+    }
+
+    /**
      * Returns the current field escape character.
      */
     public function getEscape(): string
@@ -243,6 +255,14 @@ abstract class AbstractCsv implements ByteSequence
     }
 
     /**
+     * Tells whether the BOM can be stripped if presents.
+     */
+    public function isInputBOMIncluded(): bool
+    {
+        return $this->is_input_bom_included;
+    }
+
+    /**
      * Retuns the CSV document as a Generator of string chunk.
      *
      * @param int $length number of bytes read
@@ -257,6 +277,7 @@ abstract class AbstractCsv implements ByteSequence
 
         $input_bom = $this->getInputBOM();
         $this->document->rewind();
+        $this->document->setFlags(0);
         $this->document->fseek(strlen($input_bom));
         foreach (str_split($this->output_bom.$this->document->fread($length), $length) as $chunk) {
             yield $chunk;
@@ -304,9 +325,12 @@ abstract class AbstractCsv implements ByteSequence
         if (null !== $filename) {
             $this->sendHeaders($filename);
         }
-        $input_bom = $this->getInputBOM();
+
         $this->document->rewind();
-        $this->document->fseek(strlen($input_bom));
+        if (!$this->is_input_bom_included) {
+            $this->document->fseek(strlen($this->getInputBOM()));
+        }
+
         echo $this->output_bom;
 
         return strlen($this->output_bom) + $this->document->fpassthru();
@@ -412,6 +436,30 @@ abstract class AbstractCsv implements ByteSequence
         }
 
         throw new Exception(sprintf('%s() expects escape to be a single character or the empty string %s given', __METHOD__, $escape));
+    }
+
+    /**
+     * Enables BOM Stripping.
+     *
+     * @return static
+     */
+    public function skipInputBOM(): self
+    {
+        $this->is_input_bom_included = false;
+
+        return $this;
+    }
+
+    /**
+     * Disables skipping Input BOM.
+     *
+     * @return static
+     */
+    public function includeInputBOM(): self
+    {
+        $this->is_input_bom_included = true;
+
+        return $this;
     }
 
     /**

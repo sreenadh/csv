@@ -1,12 +1,9 @@
 <?php
 
 /**
- * League.Csv (https://csv.thephpleague.com).
+ * League.Csv (https://csv.thephpleague.com)
  *
- * @author  Ignace Nyamagana Butera <nyamsprod@gmail.com>
- * @license https://github.com/thephpleague/csv/blob/master/LICENSE (MIT License)
- * @version 9.2.0
- * @link    https://github.com/thephpleague/csv
+ * (c) Ignace Nyamagana Butera <nyamsprod@gmail.com>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -24,7 +21,7 @@ use function iterator_to_array;
 
 /**
  * @group reader
- * @coversDefaultClass League\Csv\Polyfill\EmptyEscapeParser
+ * @coversDefaultClass \League\Csv\Polyfill\EmptyEscapeParser
  */
 class EmptyEscapeParserTest extends TestCase
 {
@@ -103,7 +100,7 @@ EOF;
      * @covers ::extractFieldContent
      * @covers ::extractEnclosedFieldContent
      */
-    public function testRemoveEmptyLines()
+    public function testPreserveEmptyLines()
     {
         $source = <<<EOF
 "parent name","child name","title"
@@ -117,10 +114,31 @@ EOF;
 
         $expected = [
             ['parent name', 'child name', 'title'],
+            [null],
+            [null],
             ['parentA', 'childA', 'titleA'],
         ];
 
         foreach (EmptyEscapeParser::parse($rsrc) as $offset => $record) {
+            self::assertSame($expected[$offset], $record);
+        }
+    }
+
+    /**
+     * @covers ::parse
+     * @covers ::extractRecord
+     * @covers ::extractFieldContent
+     * @covers ::extractEnclosedFieldContent
+     */
+    public function testReadingOnlyStream()
+    {
+        $expected = [
+            ['john', 'doe', 'john.doe@example.com'],
+            [null],
+        ];
+
+        $stream = Stream::createFromPath(__DIR__.'/../data/foo_readonly.csv');
+        foreach (EmptyEscapeParser::parse($stream) as $offset => $record) {
             self::assertSame($expected[$offset], $record);
         }
     }
